@@ -6,11 +6,7 @@ modified for all the changes required to get it working for controls.
 """
 
 import time
-import io
-import os
-import visdom
 from enum import Enum
-from contextlib import redirect_stdout
 
 import numpy as np
 
@@ -32,11 +28,9 @@ class States(Enum):
 
 class ControlsFlyer(UnityDrone):
 
-    def __init__(self, connection, kp_pq=0.01, kp_r=0.01, zkpd=31, kp_Yaw=1.2, kp_RollPitch=4.0,
-                 kp=0.004, kd=0.0):
+    def __init__(self, connection):
         super().__init__(connection)
-        self.controller = NonlinearController(kp_pq=kp_pq, kp_r=kp_r, zkpd=zkpd,
-                                              kp_Yaw=kp_Yaw, kp_RollPitch=kp_RollPitch, kp=kp, kd=kd)
+        self.controller = NonlinearController()
         self.target_position = np.array([0.0, 0.0, 0.0])
         self.all_waypoints = []
         self.in_mission = True
@@ -63,10 +57,10 @@ class ControlsFlyer(UnityDrone):
             self.time_trajectory, time.time())
         self.attitude_target = np.array((0.0, 0.0, yaw_cmd))
         acceleration_cmd = self.controller.lateral_position_control(
-            -self.local_position_target[0:2],
-            -self.local_velocity_target[0:2],
-            -self.local_position[0:2],
-            -self.local_velocity[0:2])
+            self.local_position_target[0:2],
+            self.local_velocity_target[0:2],
+            self.local_position[0:2],
+            self.local_velocity[0:2])
         self.local_acceleration_target = np.array([acceleration_cmd[0],
                                                    acceleration_cmd[1],
                                                    0.0])
@@ -209,112 +203,9 @@ class ControlsFlyer(UnityDrone):
         self.stop_log()
 
 
-def gear_bodyrate():
-    kp_r = 0.01
-    while kp_r < 30.0:
-        window = 4
-        mid = kp_r * 10 - window
-        kp_pq = kp_r
-        # kp_pq = float(random.choice(range(int(mid-window), int(mid +window), 1)))
-        while kp_pq <= mid + window:
-            print('trying kp_pq,kp_r: ', kp_pq, kp_r)
-            conn = MavlinkConnection('tcp:127.0.0.1:5760', threaded=False, PX4=False)
-            # conn = WebSocketConnection('ws://127.0.0.1:5760')
-            drone = ControlsFlyer(conn, kp_pq=kp_pq, kp_r=kp_r)
-            print('zkpd', drone.controller.z_k_p, drone.controller.z_k_d)
-            time.sleep(2)
-            drone.start()
-            f = io.StringIO()
-            with redirect_stdout(f):
-                drone.print_mission_score()
-            out = f.getvalue()
-            print(out)
-            with open('success_log0.txt', 'a+') as ifh:
-                ifh.write(out)
-                ifh.write('kp_pq: {} kp_r: {}\n'.format(kp_pq, kp_r))
-            cmd = """
-                osascript -e 'tell application "FCND-Control_MacOS" 
-                    activate
-                    tell application "System Events"  to keystroke "R" using {shift down} 
-                end tell' 
-                """
-            os.system(cmd)
-            time.sleep(2)
-            os.system(cmd)
-            kp_pq += 0.010
-            time.sleep(2)
-        kp_r += 1.0
-
-
-def gear_altitude():
-    z_k_pr = 1
-    while z_k_pr < 100.0:
-        print('trying z_k_pr : ',z_k_pr)
-        conn = MavlinkConnection('tcp:127.0.0.1:5760', threaded=False, PX4=False)
-        # conn = WebSocketConnection('ws://127.0.0.1:5760')
-        drone = ControlsFlyer(conn, zkpd=z_k_pr)
-
-        time.sleep(2)
-        drone.start()
-        f = io.StringIO()
-        with redirect_stdout(f):
-            drone.print_mission_score()
-        out = f.getvalue()
-        print(out)
-        with open('success_log0.txt', 'a+') as ifh:
-            ifh.write(out)
-            ifh.write('z_k_pr: {} \n'.format(z_k_pr))
-        cmd = """
-            osascript -e 'tell application "FCND-Control_MacOS" 
-                activate
-                tell application "System Events"  to keystroke "R" using {shift down} 
-            end tell' 
-            """
-        os.system(cmd)
-        time.sleep(2)
-        os.system(cmd)
-        z_k_pr += 10
-        time.sleep(2)
-
-
-def gear_kp_control():
-    kp = 0.1
-    while kp < 1.0:
-        print('trying kp: ', kp)
-        conn = MavlinkConnection('tcp:127.0.0.1:5760', threaded=False, PX4=False)
-        # conn = WebSocketConnection('ws://127.0.0.1:5760')
-        drone = ControlsFlyer(conn, kp=kp, kd=0.0)
-        time.sleep(2)
-        drone.start()
-        f = io.StringIO()
-        with redirect_stdout(f):
-            drone.print_mission_score()
-        out = f.getvalue()
-        print(out)
-        with open('success_log0.txt', 'a+') as ifh:
-            ifh.write(out)
-            ifh.write('kp: {} \n'.format(kp))
-        cmd = """
-            osascript -e 'tell application "FCND-Control_MacOS" 
-                activate
-                tell application "System Events"  to keystroke "R" using {shift down} 
-            end tell' 
-            """
-        os.system(cmd)
-        time.sleep(2)
-        os.system(cmd)
-        kp += 0.01
-        time.sleep(2)
-
-
 if __name__ == "__main__":
     conn = MavlinkConnection('tcp:127.0.0.1:5760', threaded=False, PX4=False)
     # conn = WebSocketConnection('ws://127.0.0.1:5760')
-
-    # gear_bodyrate()
-
-    gear_kp_control()
-
     drone = ControlsFlyer(conn)
     time.sleep(2)
     drone.start()

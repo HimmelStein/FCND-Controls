@@ -224,9 +224,7 @@ class UnityDrone(Drone):
             self._threshold_time = threshold
         else:
             print('Time threshold must be greater than 0.0')
-            
-            
-    
+
     def load_test_trajectory(self,time_mult=1.0):
         """Loads the test_trajectory.txt
         
@@ -234,7 +232,7 @@ class UnityDrone(Drone):
             time_mult: a multiplier to decrease the total time of the trajectory
         
         """
-        data  = np.loadtxt('test_trajectory.txt', delimiter=',', dtype='Float64')
+        data = np.loadtxt('test_trajectory.txt', delimiter=',', dtype='Float64')
         position_trajectory = []
         time_trajectory = []
         yaw_trajectory = []
@@ -243,7 +241,8 @@ class UnityDrone(Drone):
             position_trajectory.append(data[i,1:4])
             time_trajectory.append(data[i,0]*time_mult+current_time)
         for i in range(0,len(position_trajectory)-1):
-            yaw_trajectory.append(np.arctan2(position_trajectory[i+1][1]-position_trajectory[i][1],position_trajectory[i+1][0]-position_trajectory[i][0]))
+            yaw_trajectory.append(np.arctan2(position_trajectory[i+1][1]-position_trajectory[i][1],
+                                             position_trajectory[i+1][0]-position_trajectory[i][0]))
         yaw_trajectory.append(yaw_trajectory[-1])
         return(position_trajectory,time_trajectory,yaw_trajectory)
     
@@ -283,9 +282,6 @@ class UnityDrone(Drone):
                 self._mission_success = False
         if self._mission_time > self._threshold_time:
             self._mission_success = False
-        
-        
-     
 
     def _show_plots(self):
         self._horizontal_plot = self._v.line(self.all_horizontal_errors, X=self.all_times, opts=dict(title="Horizontal Error",xlabel="Time(s)",ylabel="Error (m)"))
